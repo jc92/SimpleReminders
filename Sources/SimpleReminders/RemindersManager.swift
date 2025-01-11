@@ -63,25 +63,31 @@ class RemindersManager: ObservableObject {
     }
     
     func fetchReminders() async {
-        let calendar = eventStore.calendars(for: .reminder).first { $0.calendarIdentifier == selectedListIdentifier }
-        let predicate = eventStore.predicateForReminders(in: [calendar].compactMap { $0 })
+        guard let selectedList = selectedListIdentifier else {
+            reminders = []
+            return
+        }
+
+        let predicate = eventStore.predicateForReminders(in: [eventStore.calendar(withIdentifier: selectedList)!])
         
-        let reminders = await withCheckedContinuation { continuation in
+        let fetchedReminders = await withCheckedContinuation { continuation in
             eventStore.fetchReminders(matching: predicate) { reminders in
                 continuation.resume(returning: reminders ?? [])
             }
         }
         
-        self.reminders = reminders.sorted { reminder1, reminder2 in
-            switch (reminder1.dueDateComponents?.date, reminder2.dueDateComponents?.date) {
-            case (.some(let date1), .some(let date2)):
-                return date1 < date2
-            case (.some, .none):
-                return true
-            case (.none, .some):
-                return false
-            case (.none, .none):
-                return reminder1.title?.localizedCompare(reminder2.title ?? "") == .orderedAscending
+        await MainActor.run {
+            self.reminders = fetchedReminders.sorted { reminder1, reminder2 in
+                switch (reminder1.dueDateComponents?.date, reminder2.dueDateComponents?.date) {
+                case (.some(let date1), .some(let date2)):
+                    return date1 < date2
+                case (.some, .none):
+                    return true
+                case (.none, .some):
+                    return false
+                case (.none, .none):
+                    return reminder1.title?.localizedCompare(reminder2.title ?? "") == .orderedAscending
+                }
             }
         }
     }
@@ -99,5 +105,41 @@ class RemindersManager: ObservableObject {
         Task {
             await fetchReminders()
         }
+    }
+    
+    func generateDeepLink(for reminder: EKReminder) -> String {
+        guard let uuid = reminder.calendarItemExternalIdentifier else { return "" }
+        return "x-apple-reminderkit://REMCDReminder/\(uuid)"
+    }
+    
+    func copyToClipboard(_ string: String) {
+        guard !string.isEmpty else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(string, forType: .string)
+    }
+    
+    func copyRichTextLink(for reminder: EKReminder) {
+        guard let url = generateDeepLink(for: reminder).addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let title = reminder.title else { return }
+        
+        // Create an attributed string with the link
+        let attributedString = NSAttributedString(
+            string: title,
+            attributes: [
+                .link: url,
+                .foregroundColor: NSColor.linkColor
+            ]
+        )
+        
+        // Convert to RTF data
+        let rtfData = try? attributedString.rtf(from: NSRange(location: 0, length: attributedString.length),
+                                              documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf])
+        
+        // Copy both RTF and plain text to support different paste targets
+        NSPasteboard.general.clearContents()
+        if let rtfData = rtfData {
+            NSPasteboard.general.setData(rtfData, forType: .rtf)
+        }
+        NSPasteboard.general.setString(title, forType: .string)
     }
 }
