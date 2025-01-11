@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSRemindersUsageDescription</key>
+    <string>This app needs access to your reminders to show and link them.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>This app needs to simulate keyboard events to paste links.</string>
+    <key>NSAppleScriptEnabled</key>
+    <true/>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>This app needs to control Notes to paste links.</string>
+</dict>
+</plist>
