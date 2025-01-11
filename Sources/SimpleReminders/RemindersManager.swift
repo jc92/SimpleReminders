@@ -12,7 +12,7 @@ struct ReminderList: Identifiable {
 class RemindersManager: ObservableObject {
     static let shared = RemindersManager()
     
-    private let eventStore = EKEventStore()
+    let eventStore = EKEventStore()
     @Published var reminders: [EKReminder] = []
     @Published var authorizationStatus: EKAuthorizationStatus = .notDetermined
     @Published var selectedListIdentifier: String?
