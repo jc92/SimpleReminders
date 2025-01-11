@@ -4,6 +4,5 @@ import AppKit
 let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate
-
-// Run the application
-_ = NSApplicationMain(CommandLine.argc, CommandLine.unsafeArgv)
+app.setActivationPolicy(.accessory)  // This makes it a menu bar app
+app.run()

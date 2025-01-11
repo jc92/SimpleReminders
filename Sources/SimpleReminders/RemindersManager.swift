@@ -15,10 +15,15 @@ class RemindersManager: ObservableObject {
     private let eventStore = EKEventStore()
     @Published var reminders: [EKReminder] = []
     @Published var authorizationStatus: EKAuthorizationStatus = .notDetermined
-    @AppStorage("selectedListIdentifier") private var selectedListIdentifier: String?
+    @Published var selectedListIdentifier: String?
     @Published var availableLists: [ReminderList] = []
     
+    // Persist selected list
+    @AppStorage("lastSelectedList") private var lastSelectedList: String?
+    
     init() {
+        // Restore last selected list
+        selectedListIdentifier = lastSelectedList
         Task {
             await requestAccess()
         }
@@ -94,6 +99,7 @@ class RemindersManager: ObservableObject {
     
     func selectList(_ identifier: String) {
         selectedListIdentifier = identifier
+        lastSelectedList = identifier  // Persist selection
         Task {
             await fetchReminders()
         }
