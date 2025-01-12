@@ -190,7 +190,10 @@ class TaskPickerViewModel: ObservableObject {
         guard !searchText.isEmpty else { return }
         
         let eventStore = RemindersManager.shared.eventStore
-        let calendar = selectedListId.flatMap { eventStore.calendar(withIdentifier: $0) } ?? eventStore.defaultCalendarForNewReminders()
+        // Use selected list if set, otherwise use default list
+        let calendar = selectedListId.flatMap { eventStore.calendar(withIdentifier: $0) } 
+            ?? RemindersManager.shared.getDefaultCalendar()
+            ?? eventStore.defaultCalendarForNewReminders()
         
         let reminder = EKReminder(eventStore: eventStore)
         reminder.title = searchText

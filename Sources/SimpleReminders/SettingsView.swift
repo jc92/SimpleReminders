@@ -1,7 +1,10 @@
 import SwiftUI
+import EventKit
 
 struct SettingsView: View {
     @AppStorage("showCompleted") private var showCompleted = false
+    @AppStorage("defaultListId") private var defaultListId: String = ""
+    @StateObject private var remindersManager = RemindersManager.shared
     
     var body: some View {
         Form {
@@ -15,8 +18,25 @@ struct SettingsView: View {
             Section {
                 Toggle("Show Completed Tasks", isOn: $showCompleted)
             }
+            
+            Section {
+                Picker("Default List", selection: $defaultListId) {
+                    Text("None").tag("")
+                    ForEach(remindersManager.availableLists) { list in
+                        HStack {
+                            Circle()
+                                .fill(Color(nsColor: list.color))
+                                .frame(width: 8, height: 8)
+                            Text(list.title)
+                        }.tag(list.id)
+                    }
+                }
+                .onChange(of: defaultListId) { newValue in
+                    remindersManager.setDefaultList(newValue)
+                }
+            }
         }
         .padding()
-        .frame(width: 300, height: 150)
+        .frame(width: 300, height: 200)
     }
 }

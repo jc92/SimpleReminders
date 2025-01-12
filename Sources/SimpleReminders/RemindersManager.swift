@@ -32,6 +32,7 @@ class RemindersManager: ObservableObject {
     
     // Persist selected list
     @AppStorage("lastSelectedList") private var lastSelectedList: String?
+    @AppStorage("defaultListId") private var defaultListId: String = ""
     
     init() {
         // Restore last selected list
@@ -213,5 +214,28 @@ class RemindersManager: ObservableObject {
         
         try eventStore.save(reminder, commit: true)
         await fetchReminders()
+    }
+    
+    func setDefaultList(_ identifier: String) {
+        defaultListId = identifier
+        objectWillChange.send()
+    }
+    
+    func getDefaultCalendar() -> EKCalendar? {
+        // First try to find Inbox
+        let inboxList = availableLists.first { $0.title.lowercased() == "inbox" }
+        if let inboxId = inboxList?.id,
+           let calendar = eventStore.calendar(withIdentifier: inboxId) {
+            return calendar
+        }
+        
+        // If no Inbox found and user has set a default list, use that
+        if !defaultListId.isEmpty,
+           let calendar = eventStore.calendar(withIdentifier: defaultListId) {
+            return calendar
+        }
+        
+        // Fallback to system default
+        return eventStore.defaultCalendarForNewReminders()
     }
 }
