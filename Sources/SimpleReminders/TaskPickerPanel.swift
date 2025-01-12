@@ -35,9 +35,20 @@ class TaskPickerPanel: NSPanel {
             ))
         }
         
+        setupKeyboardMonitor()
+    }
+    
+    private func setupKeyboardMonitor() {
+        // Remove existing monitor if any
+        if let monitor = localMonitor {
+            NSEvent.removeMonitor(monitor)
+            localMonitor = nil
+        }
+        
         // Monitor keyboard events
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
             guard let self = self else { return event }
+            guard self.isKeyWindow else { return event }
             
             switch event.keyCode {
             case 53: // Escape
@@ -91,6 +102,9 @@ class TaskPickerPanel: NSPanel {
         contentViewModel.selectedIndex = 0
         contentViewModel.isShowingListPicker = false
         contentViewModel.listSearchText = ""
+        
+        // Ensure keyboard monitor is set up
+        setupKeyboardMonitor()
     }
     
     override func close() {
