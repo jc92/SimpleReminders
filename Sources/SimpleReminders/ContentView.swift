@@ -43,10 +43,12 @@ class ListFocusState: ObservableObject {
 struct ContentView: View {
     @StateObject private var remindersManager = RemindersManager.shared
     @ObservedObject private var focusState = ListFocusState.shared
+    @ObservedObject private var keyboardManager = KeyboardManager.shared
     @AppStorage("showCompleted") private var showCompleted = false
     @State private var showCopyNotification = false
     @State private var lastCopiedTitle = ""
     @State private var clickedLinkId: String? = nil
+    @State private var selectedMenuIndex = 0
     @Namespace private var listNamespace
     @Environment(\.scenePhase) private var scenePhase
     
@@ -81,6 +83,14 @@ struct ContentView: View {
             }
             .padding()
             .background(Color(NSColor.windowBackgroundColor))
+            .onAppear {
+                keyboardManager.onUpArrow = {
+                    navigateMenu(direction: -1)
+                }
+                keyboardManager.onDownArrow = {
+                    navigateMenu(direction: 1)
+                }
+            }
             
             if showCopyNotification {
                 Text("Copied link for '\(lastCopiedTitle)'")
@@ -248,6 +258,17 @@ struct ContentView: View {
         print("Focusing selected list: \(remindersManager.selectedListIdentifier ?? "none")")
         focusState.focusedListId = remindersManager.selectedListIdentifier
     }
+    
+    private func navigateMenu(direction: Int) {
+        let menuItems = remindersManager.availableLists
+        guard !menuItems.isEmpty else { return }
+        
+        selectedMenuIndex = (selectedMenuIndex + direction + menuItems.count) % menuItems.count
+        if let list = menuItems[safe: selectedMenuIndex] {
+            remindersManager.selectList(list.id)  // This will update the reminders
+            focusState.focusedListId = list.id
+        }
+    }
 }
 
 struct ListRowHoverModifier: ViewModifier {
@@ -275,6 +296,12 @@ struct ListRowHoverModifier: ViewModifier {
 extension View {
     func listRowHoverStyle(isSelected: Bool) -> some View {
         modifier(ListRowHoverModifier(isSelected: isSelected))
+    }
+}
+
+extension Array {
+    subscript(safe index: Int) -> Element? {
+        return indices.contains(index) ? self[index] : nil
     }
 }
 

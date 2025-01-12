@@ -137,6 +137,15 @@ class TaskPickerViewModel: ObservableObject {
             let count = filteredLists.count
             if count == 0 { return }
             selectedIndex = (selectedIndex + (up ? -1 : 1) + count) % count
+            
+            // Update selected list when navigating
+            let selectedList = filteredLists[selectedIndex]
+            selectedListId = selectedList.calendarIdentifier
+            selectedListTitle = selectedList.title
+            Task {
+                await fetchAllReminders()
+                objectWillChange.send()
+            }
         } else {
             let count = filteredReminders.count
             if count == 0 { return }
