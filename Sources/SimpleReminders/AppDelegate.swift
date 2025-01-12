@@ -6,7 +6,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
     private var eventMonitor: Any?
+    private var keyboardMonitor: Any?
     private var hotKey: HotKey?
+    private var contentView: ContentView!
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Create the status item
@@ -17,11 +19,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             button.target = self
         }
         
+        // Create content view
+        contentView = ContentView()
+        
         // Create popover
         popover = NSPopover()
         popover.contentSize = NSSize(width: 400, height: 500)
         popover.behavior = .applicationDefined
-        popover.contentViewController = NSHostingController(rootView: ContentView())
+        popover.contentViewController = NSHostingController(rootView: contentView)
         
         // Create menu
         let mainMenu = NSMenu()
@@ -50,11 +55,47 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
+        
+        // Monitor keyboard events
+        keyboardMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self else { return event }
+            
+            print("Key event received: \(event.keyCode)")
+            
+            if self.popover.isShown {
+                switch event.keyCode {
+                case 125: // Down Arrow
+                    print("Down arrow pressed")
+                    DispatchQueue.main.async {
+                        self.contentView.navigateList(direction: 1)
+                    }
+                    return nil
+                case 126: // Up Arrow
+                    print("Up arrow pressed")
+                    DispatchQueue.main.async {
+                        self.contentView.navigateList(direction: -1)
+                    }
+                    return nil
+                case 36: // Return
+                    print("Return pressed")
+                    DispatchQueue.main.async {
+                        self.contentView.selectFocusedList()
+                    }
+                    return nil
+                default:
+                    return event
+                }
+            }
+            return event
+        }
     }
     
     deinit {
-        if let monitor = eventMonitor {
-            NSEvent.removeMonitor(monitor)
+        if let eventMonitor = eventMonitor {
+            NSEvent.removeMonitor(eventMonitor)
+        }
+        if let keyboardMonitor = keyboardMonitor {
+            NSEvent.removeMonitor(keyboardMonitor)
         }
     }
     
@@ -68,9 +109,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     func showPopover() {
         if let button = statusItem.button {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            if let window = popover.contentViewController?.view.window {
-                window.level = .popUpMenu
+            NSApp.activate(ignoringOtherApps: true)
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: NSRectEdge.minY)
+            
+            // Give time for the window to appear and then set focus
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                print("Setting initial focus")
+                if let window = self.popover.contentViewController?.view.window {
+                    window.makeFirstResponder(nil)
+                    self.contentView.focusSelectedList()
+                }
             }
         }
     }
