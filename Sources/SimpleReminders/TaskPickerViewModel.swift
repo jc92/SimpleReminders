@@ -213,6 +213,17 @@ class TaskPickerViewModel: ObservableObject {
         reminder.title = searchText
         reminder.calendar = calendar
         
+        // Add note links for both platforms if a note is selected
+        if let noteIdentifier = NotesManager.shared.getLatestNoteIdentifier() {
+            reminder.notes = """
+            Link on Mac: notes://showNote?identifier=\(noteIdentifier)
+            Link on iOS: mobilenotes://showNote?identifier=\(noteIdentifier)
+            """
+            print("Added note links to reminder")
+        } else {
+            print("No note selected in Notes.app")
+        }
+        
         try? eventStore.save(reminder, commit: true)
         searchText = ""
         await fetchAllReminders()

@@ -36,8 +36,9 @@ class RemindersManager: ObservableObject {
     
     init() {
         print("RemindersManager init - defaultListId: \(defaultListId), lastSelectedList: \(String(describing: lastSelectedList))")
-        // If we have a default list set, use that as the selected list
-        selectedListIdentifier = !defaultListId.isEmpty ? defaultListId : lastSelectedList
+        // Clear any existing selection to ensure proper initialization
+        selectedListIdentifier = nil
+        defaultListId = ""  // Clear default list to ensure proper initialization
         Task {
             await requestAccess()
         }
@@ -135,17 +136,34 @@ class RemindersManager: ObservableObject {
                 isDefault: calendar.calendarIdentifier == defaultListId
             )
         }.sorted { list1, list2 in
-            // Put default list first, then sort by title
-            if list1.isDefault { return true }
-            if list2.isDefault { return false }
+            // Put Inbox first
+            if list1.title == "Inbox" { return true }
+            if list2.title == "Inbox" { return false }
+            // Then sort alphabetically
             return list1.title.localizedCompare(list2.title) == .orderedAscending
         }
         
-        // If no list is selected, use the default list if set, otherwise use the first available list
-        if selectedListIdentifier == nil {
-            selectedListIdentifier = defaultListId.isEmpty ? availableLists.first?.id : defaultListId
+        // Always try to find Inbox
+        let inboxList = availableLists.first(where: { $0.title == "Inbox" })
+        
+        // If this is first launch (no default set) or if default list doesn't exist anymore
+        if defaultListId.isEmpty || !availableLists.contains(where: { $0.id == defaultListId }) {
+            if let inbox = inboxList {
+                defaultListId = inbox.id
+                selectedListIdentifier = inbox.id
+                print("Setting Inbox as default list: \(inbox.id)")
+            }
         }
-        print("Available lists: \(availableLists.map { "\($0.title) (id: \($0.id), isDefault: \($0.isDefault))" }.joined(separator: ", "))")
+        
+        // If we still don't have a selection, use Inbox or first available
+        if selectedListIdentifier == nil {
+            selectedListIdentifier = inboxList?.id ?? availableLists.first?.id
+        }
+        
+        // Save the selected list for next launch
+        lastSelectedList = selectedListIdentifier
+        
+        print("Available lists: \(availableLists.map { "\($0.title) (id: \($0.id), isDefault: \($0.id == defaultListId))" }.joined(separator: ", "))")
     }
     
     func fetchReminders() async {

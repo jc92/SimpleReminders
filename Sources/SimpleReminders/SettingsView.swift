@@ -21,7 +21,6 @@ struct SettingsView: View {
             
             Section {
                 Picker("Default List", selection: $defaultListId) {
-                    Text("None").tag("")
                     ForEach(remindersManager.availableLists) { list in
                         HStack {
                             Circle()
@@ -32,8 +31,16 @@ struct SettingsView: View {
                     }
                 }
                 .onChange(of: defaultListId) { newValue in
-                    print("Default list changed to: \(newValue)")
-                    remindersManager.setDefaultList(newValue)
+                    // Don't allow empty selection
+                    if newValue.isEmpty {
+                        if let inboxList = remindersManager.availableLists.first(where: { $0.title == "Inbox" }) {
+                            defaultListId = inboxList.id
+                            remindersManager.setDefaultList(inboxList.id)
+                        }
+                    } else {
+                        print("Default list changed to: \(newValue)")
+                        remindersManager.setDefaultList(newValue)
+                    }
                 }
             }
         }
