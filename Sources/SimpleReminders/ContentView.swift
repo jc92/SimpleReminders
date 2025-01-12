@@ -51,6 +51,7 @@ struct ContentView: View {
     @State private var selectedMenuIndex = 0
     @Namespace private var listNamespace
     @Environment(\.scenePhase) private var scenePhase
+    @State private var showSettings = false
     
     var filteredReminders: [EKReminder] {
         remindersManager.reminders.filter { reminder in
@@ -77,9 +78,17 @@ struct ContentView: View {
                 Text("Simple Reminders")
                     .font(.headline)
                 Spacer()
-                Toggle("Show Completed", isOn: $showCompleted)
-                    .toggleStyle(.switch)
-                    .focusable(false)
+                Button(action: {
+                    showSettings.toggle()
+                }) {
+                    Image(systemName: "gear")
+                        .foregroundColor(.primary)
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: $showSettings) {
+                    SettingsView()
+                        .frame(width: 300, height: 150)
+                }
             }
             .padding()
             .background(Color(NSColor.windowBackgroundColor))
