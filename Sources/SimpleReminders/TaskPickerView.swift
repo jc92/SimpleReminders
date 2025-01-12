@@ -1,5 +1,95 @@
 import SwiftUI
 import EventKit
+import AppKit
+
+class CustomNSTextField: NSTextField {
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.modifierFlags.contains(.command) {
+            switch event.charactersIgnoringModifiers {
+            case "a":
+                if let editor = currentEditor() {
+                    editor.selectAll(nil)
+                    return true
+                }
+            case "c":
+                if NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: self) {
+                    return true
+                }
+            case "v":
+                if NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: self) {
+                    return true
+                }
+            case "x":
+                if NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: self) {
+                    return true
+                }
+            default:
+                break
+            }
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+}
+
+struct CustomTextField: NSViewRepresentable {
+    @Binding var text: String
+    var font: NSFont
+    var onEditingChanged: (Bool) -> Void = { _ in }
+    
+    func makeNSView(context: Context) -> CustomNSTextField {
+        let textField = CustomNSTextField()
+        textField.delegate = context.coordinator
+        textField.font = font
+        textField.placeholderString = "Search reminders... (# for lists)"
+        textField.focusRingType = .none
+        textField.isBezeled = false
+        textField.drawsBackground = false
+        textField.cell?.isScrollable = true
+        textField.cell?.wraps = false
+        textField.cell?.usesSingleLineMode = true
+        
+        // Add key equivalent for Command+A
+        let menu = NSMenu()
+        let selectAllItem = NSMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        selectAllItem.keyEquivalentModifierMask = .command
+        menu.addItem(selectAllItem)
+        textField.menu = menu
+        
+        return textField
+    }
+    
+    func updateNSView(_ nsView: CustomNSTextField, context: Context) {
+        nsView.stringValue = text
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text, onEditingChanged: onEditingChanged)
+    }
+    
+    class Coordinator: NSObject, NSTextFieldDelegate {
+        var text: Binding<String>
+        var onEditingChanged: (Bool) -> Void
+        
+        init(text: Binding<String>, onEditingChanged: @escaping (Bool) -> Void) {
+            self.text = text
+            self.onEditingChanged = onEditingChanged
+        }
+        
+        func controlTextDidChange(_ obj: Notification) {
+            if let textField = obj.object as? NSTextField {
+                text.wrappedValue = textField.stringValue
+            }
+        }
+        
+        func controlTextDidBeginEditing(_ obj: Notification) {
+            onEditingChanged(true)
+        }
+        
+        func controlTextDidEndEditing(_ obj: Notification) {
+            onEditingChanged(false)
+        }
+    }
+}
 
 struct TaskPickerView: View {
     @ObservedObject var viewModel: TaskPickerViewModel
@@ -29,9 +119,7 @@ struct TaskPickerView: View {
                         .frame(width: 300, height: 400)
                     }
                     
-                    TextField("Search reminders... (# for lists)", text: $viewModel.searchText)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 24))
+                    CustomTextField(text: $viewModel.searchText, font: .systemFont(ofSize: 24))
                         .focused($isSearchFocused)
                         .onChange(of: viewModel.clickedLinkId) { _ in
                             dismiss()
