@@ -41,11 +41,16 @@ class TaskPickerPanel: NSPanel {
             
             switch event.keyCode {
             case 53: // Escape
-                self.close()
-                return nil
+                if self.contentViewModel.isShowingListPicker {
+                    self.contentViewModel.isShowingListPicker = false
+                    return nil
+                } else {
+                    self.close()
+                    return nil
+                }
             case 36: // Return
                 self.contentViewModel.confirmSelection()
-                if !self.contentViewModel.isShowingLists {
+                if !self.contentViewModel.isShowingListPicker {
                     self.close()
                 }
                 return nil
@@ -76,7 +81,8 @@ class TaskPickerPanel: NSPanel {
         // Reset view model state when showing
         contentViewModel.searchText = ""
         contentViewModel.selectedIndex = 0
-        contentViewModel.isShowingLists = false
+        contentViewModel.isShowingListPicker = false
+        contentViewModel.listSearchText = ""
     }
     
     override func close() {
@@ -85,6 +91,7 @@ class TaskPickerPanel: NSPanel {
         // Reset the view model state
         contentViewModel.searchText = ""
         contentViewModel.selectedIndex = 0
-        contentViewModel.isShowingLists = false
+        contentViewModel.isShowingListPicker = false
+        contentViewModel.listSearchText = ""
     }
 }

@@ -4,29 +4,62 @@ import EventKit
 struct TaskPickerView: View {
     @ObservedObject var viewModel: TaskPickerViewModel
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var isSearchFocused: Bool
     
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                TextField("Search reminders...", text: $viewModel.searchText)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 24))
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
-                    .onChange(of: viewModel.clickedLinkId) { _ in
-                        dismiss()
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Button(action: {
+                        viewModel.isShowingListPicker.toggle()
+                    }) {
+                        Image(systemName: "list.bullet")
+                            .foregroundColor(.primary)
+                            .frame(width: 30, height: 30)
                     }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $viewModel.isShowingListPicker) {
+                        VStack {
+                            TextField("Search lists...", text: $viewModel.listSearchText)
+                                .textFieldStyle(.roundedBorder)
+                                .padding()
+                            
+                            List(viewModel.filteredLists, id: \.calendarIdentifier, selection: .constant(viewModel.selectedIndex)) { calendar in
+                                HStack {
+                                    Circle()
+                                        .fill(Color(nsColor: calendar.color))
+                                        .frame(width: 12, height: 12)
+                                    Text(calendar.title)
+                                    Spacer()
+                                    if calendar.calendarIdentifier == viewModel.selectedListId {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    viewModel.selectList(calendar)
+                                }
+                            }
+                            .listStyle(.plain)
+                        }
+                        .frame(width: 300, height: 400)
+                    }
+                    
+                    TextField("Search reminders...", text: $viewModel.searchText)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 24))
+                        .focused($isSearchFocused)
+                        .onChange(of: viewModel.clickedLinkId) { _ in
+                            dismiss()
+                        }
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
                 
-                if viewModel.selectedListTitle != nil {
+                if let selectedListTitle = viewModel.selectedListTitle {
                     HStack {
-                        Text(viewModel.selectedListTitle!)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill(Color.accentColor)
-                            )
+                        Text("List: \(selectedListTitle)")
+                            .foregroundColor(.secondary)
                         
                         Button(action: {
                             viewModel.clearListFilter()
@@ -36,37 +69,20 @@ struct TaskPickerView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    .padding(.trailing)
+                    .padding(.horizontal)
+                    .padding(.bottom, 4)
                 }
             }
             .background(Color(NSColor.textBackgroundColor))
             
             Divider()
             
-            if viewModel.isShowingLists {
-                listSelectionView
-            } else {
-                reminderListView
-            }
+            reminderListView
         }
         .frame(width: 600, height: 400)
-    }
-    
-    private var listSelectionView: some View {
-        List(viewModel.filteredLists, id: \.calendarIdentifier, selection: .constant(viewModel.selectedIndex)) { calendar in
-            HStack {
-                Circle()
-                    .fill(Color(nsColor: calendar.color))
-                    .frame(width: 12, height: 12)
-                Text(calendar.title)
-            }
-            .listRowBackground(
-                viewModel.filteredLists.firstIndex(where: { $0.calendarIdentifier == calendar.calendarIdentifier }) == viewModel.selectedIndex
-                ? Color.accentColor.opacity(0.2)
-                : Color.clear
-            )
+        .onAppear {
+            isSearchFocused = true
         }
-        .listStyle(.plain)
     }
     
     private var reminderListView: some View {
@@ -87,6 +103,14 @@ struct TaskPickerView: View {
                 ? Color.accentColor.opacity(0.2)
                 : Color.clear
             )
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if let index = viewModel.filteredReminders.firstIndex(where: { $0.calendarItemIdentifier == reminder.calendarItemIdentifier }) {
+                    viewModel.selectedIndex = index
+                    viewModel.confirmSelection()
+                    dismiss()
+                }
+            }
         }
         .listStyle(.plain)
     }
