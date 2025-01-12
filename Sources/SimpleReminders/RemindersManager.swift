@@ -32,11 +32,12 @@ class RemindersManager: ObservableObject {
     
     // Persist selected list
     @AppStorage("lastSelectedList") private var lastSelectedList: String?
-    @AppStorage("defaultListId") private var defaultListId: String = ""
+    @AppStorage("defaultListId") var defaultListId: String = ""
     
     init() {
-        // Restore last selected list
-        selectedListIdentifier = lastSelectedList
+        print("RemindersManager init - defaultListId: \(defaultListId), lastSelectedList: \(String(describing: lastSelectedList))")
+        // If we have a default list set, use that as the selected list
+        selectedListIdentifier = !defaultListId.isEmpty ? defaultListId : lastSelectedList
         Task {
             await requestAccess()
         }
@@ -125,17 +126,26 @@ class RemindersManager: ObservableObject {
     }
     
     func fetchLists() async {
+        print("Fetching lists - defaultListId: \(defaultListId)")
         availableLists = eventStore.calendars(for: .reminder).map { calendar in
             ReminderList(
                 id: calendar.calendarIdentifier,
                 title: calendar.title,
                 color: calendar.color,
-                isDefault: calendar.calendarIdentifier == selectedListIdentifier
+                isDefault: calendar.calendarIdentifier == defaultListId
             )
+        }.sorted { list1, list2 in
+            // Put default list first, then sort by title
+            if list1.isDefault { return true }
+            if list2.isDefault { return false }
+            return list1.title.localizedCompare(list2.title) == .orderedAscending
         }
+        
+        // If no list is selected, use the default list if set, otherwise use the first available list
         if selectedListIdentifier == nil {
-            selectedListIdentifier = availableLists.first?.id
+            selectedListIdentifier = defaultListId.isEmpty ? availableLists.first?.id : defaultListId
         }
+        print("Available lists: \(availableLists.map { "\($0.title) (id: \($0.id), isDefault: \($0.isDefault))" }.joined(separator: ", "))")
     }
     
     func fetchReminders() async {
@@ -222,19 +232,15 @@ class RemindersManager: ObservableObject {
     }
     
     func getDefaultCalendar() -> EKCalendar? {
-        // First try to find Inbox
-        let inboxList = availableLists.first { $0.title.lowercased() == "inbox" }
-        if let inboxId = inboxList?.id,
-           let calendar = eventStore.calendar(withIdentifier: inboxId) {
-            return calendar
-        }
-        
-        // If no Inbox found and user has set a default list, use that
+        print("getDefaultCalendar called - defaultListId: \(defaultListId)")
+        // If user has set a default list, use that
         if !defaultListId.isEmpty,
            let calendar = eventStore.calendar(withIdentifier: defaultListId) {
+            print("Found calendar for defaultListId: \(defaultListId)")
             return calendar
         }
         
+        print("Falling back to system default calendar")
         // Fallback to system default
         return eventStore.defaultCalendarForNewReminders()
     }

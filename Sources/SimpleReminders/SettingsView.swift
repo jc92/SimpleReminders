@@ -32,6 +32,7 @@ struct SettingsView: View {
                     }
                 }
                 .onChange(of: defaultListId) { newValue in
+                    print("Default list changed to: \(newValue)")
                     remindersManager.setDefaultList(newValue)
                 }
             }

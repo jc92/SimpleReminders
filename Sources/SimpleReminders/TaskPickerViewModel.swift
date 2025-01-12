@@ -18,6 +18,15 @@ class TaskPickerViewModel: ObservableObject {
     @Published var availableLists: [EKCalendar] = []
     
     init() {
+        // Initialize with the default list from RemindersManager
+        let remindersManager = RemindersManager.shared
+        if !remindersManager.defaultListId.isEmpty {
+            selectedListId = remindersManager.defaultListId
+            if let calendar = remindersManager.eventStore.calendar(withIdentifier: remindersManager.defaultListId) {
+                selectedListTitle = calendar.title
+            }
+        }
+        
         Task {
             await fetchAllReminders()
             await fetchAvailableLists()
@@ -193,8 +202,13 @@ class TaskPickerViewModel: ObservableObject {
         // Use selected list if set, otherwise use default list
         let calendar = selectedListId.flatMap { eventStore.calendar(withIdentifier: $0) } 
             ?? RemindersManager.shared.getDefaultCalendar()
-            ?? eventStore.defaultCalendarForNewReminders()
         
+        guard let calendar = calendar else {
+            print("Error: No valid calendar found for reminder creation")
+            return
+        }
+        
+        print("Creating reminder in calendar: \(calendar.title) (id: \(calendar.calendarIdentifier))")
         let reminder = EKReminder(eventStore: eventStore)
         reminder.title = searchText
         reminder.calendar = calendar
