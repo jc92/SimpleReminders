@@ -24,28 +24,12 @@ struct TaskPickerView: View {
                                 .textFieldStyle(.roundedBorder)
                                 .padding()
                             
-                            List(viewModel.filteredLists, id: \.calendarIdentifier, selection: .constant(viewModel.selectedIndex)) { calendar in
-                                HStack {
-                                    Circle()
-                                        .fill(Color(nsColor: calendar.color))
-                                        .frame(width: 12, height: 12)
-                                    Text(calendar.title)
-                                    Spacer()
-                                    if calendar.calendarIdentifier == viewModel.selectedListId {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    viewModel.selectList(calendar)
-                                }
-                            }
-                            .listStyle(.plain)
+                            listSelectionView
                         }
                         .frame(width: 300, height: 400)
                     }
                     
-                    TextField("Search reminders...", text: $viewModel.searchText)
+                    TextField("Search reminders... (# for lists)", text: $viewModel.searchText)
                         .textFieldStyle(.plain)
                         .font(.system(size: 24))
                         .focused($isSearchFocused)
@@ -55,6 +39,40 @@ struct TaskPickerView: View {
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 8)
+                
+                if viewModel.searchText.hasPrefix("#") {
+                    let searchTerm = String(viewModel.searchText.dropFirst()).trimmingCharacters(in: .whitespaces)
+                    let filteredLists = viewModel.availableLists.filter {
+                        searchTerm.isEmpty || $0.title.localizedCaseInsensitiveContains(searchTerm)
+                    }
+                    if !filteredLists.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(filteredLists, id: \.calendarIdentifier) { calendar in
+                                    HStack {
+                                        Circle()
+                                            .fill(Color(nsColor: calendar.color))
+                                            .frame(width: 8, height: 8)
+                                        Text(calendar.title)
+                                            .foregroundColor(.primary)
+                                    }
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.secondary.opacity(0.2))
+                                    )
+                                    .onTapGesture {
+                                        viewModel.selectList(calendar)
+                                        viewModel.searchText = ""
+                                    }
+                                }
+                            }
+                            .padding(.horizontal)
+                            .padding(.bottom, 4)
+                        }
+                    }
+                }
                 
                 if let selectedListTitle = viewModel.selectedListTitle {
                     HStack {
@@ -110,6 +128,26 @@ struct TaskPickerView: View {
                     viewModel.confirmSelection()
                     dismiss()
                 }
+            }
+        }
+        .listStyle(.plain)
+    }
+    
+    private var listSelectionView: some View {
+        List(viewModel.filteredLists, id: \.calendarIdentifier, selection: .constant(viewModel.selectedIndex)) { calendar in
+            HStack {
+                Circle()
+                    .fill(Color(nsColor: calendar.color))
+                    .frame(width: 12, height: 12)
+                Text(calendar.title)
+                Spacer()
+                if calendar.calendarIdentifier == viewModel.selectedListId {
+                    Image(systemName: "checkmark")
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                viewModel.selectList(calendar)
             }
         }
         .listStyle(.plain)

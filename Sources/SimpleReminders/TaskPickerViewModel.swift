@@ -6,7 +6,22 @@ import AppKit
 @MainActor
 class TaskPickerViewModel: ObservableObject {
     @Published var selectedIndex = 0
-    @Published var searchText = ""
+    @Published var searchText = "" {
+        didSet {
+            if searchText.hasPrefix("#") {
+                let searchTerm = String(searchText.dropFirst()).trimmingCharacters(in: .whitespaces)
+                if !searchTerm.isEmpty {
+                    // Try to find a matching list
+                    if let matchingList = availableLists.first(where: { $0.title.localizedCaseInsensitiveContains(searchTerm) }) {
+                        selectList(matchingList)
+                    }
+                } else {
+                    // If only # is typed, show all lists
+                    clearListFilter()
+                }
+            }
+        }
+    }
     @Published var clickedLinkId: String? = nil
     @Published var isShowingListPicker = false
     @Published var selectedListId: String? = nil
@@ -14,7 +29,7 @@ class TaskPickerViewModel: ObservableObject {
     @Published var listSearchText = ""
     
     private var allReminders: [EKReminder] = []
-    private var availableLists: [EKCalendar] = []
+    @Published var availableLists: [EKCalendar] = []
     
     init() {
         Task {
@@ -65,7 +80,7 @@ class TaskPickerViewModel: ObservableObject {
     
     var filteredReminders: [EKReminder] {
         let openReminders = allReminders.filter { !$0.isCompleted }
-        if searchText.isEmpty {
+        if searchText.isEmpty || searchText.hasPrefix("#") {
             return openReminders
         }
         
