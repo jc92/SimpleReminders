@@ -185,4 +185,19 @@ class TaskPickerViewModel: ObservableObject {
             }
         }
     }
+    
+    func createReminder() async {
+        guard !searchText.isEmpty else { return }
+        
+        let eventStore = RemindersManager.shared.eventStore
+        let calendar = selectedListId.flatMap { eventStore.calendar(withIdentifier: $0) } ?? eventStore.defaultCalendarForNewReminders()
+        
+        let reminder = EKReminder(eventStore: eventStore)
+        reminder.title = searchText
+        reminder.calendar = calendar
+        
+        try? eventStore.save(reminder, commit: true)
+        searchText = ""
+        await fetchAllReminders()
+    }
 }

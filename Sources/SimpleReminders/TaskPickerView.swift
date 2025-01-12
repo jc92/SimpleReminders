@@ -147,10 +147,22 @@ struct TaskPickerView: View {
                             return result
                         }
                     )
-                        .focused($isSearchFocused)
-                        .onChange(of: viewModel.clickedLinkId) { _ in
-                            dismiss()
+                    .focused($isSearchFocused)
+                    .onChange(of: viewModel.clickedLinkId) { _ in
+                        dismiss()
+                    }
+                    
+                    Button(action: {
+                        Task {
+                            await viewModel.createReminder()
                         }
+                    }) {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundColor(viewModel.searchText.isEmpty ? .gray.opacity(0.5) : .white)
+                            .font(.system(size: 20))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(viewModel.searchText.isEmpty)
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 8)

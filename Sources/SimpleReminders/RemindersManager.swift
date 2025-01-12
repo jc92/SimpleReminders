@@ -200,4 +200,18 @@ class RemindersManager: ObservableObject {
         }
         NSPasteboard.general.setString(title, forType: .string)
     }
+    
+    func createReminder(withTitle title: String) async throws {
+        guard let selectedList = selectedListIdentifier,
+              let calendar = eventStore.calendar(withIdentifier: selectedList) else {
+            return
+        }
+        
+        let reminder = EKReminder(eventStore: eventStore)
+        reminder.title = title
+        reminder.calendar = calendar
+        
+        try eventStore.save(reminder, commit: true)
+        await fetchReminders()
+    }
 }

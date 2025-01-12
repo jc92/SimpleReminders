@@ -49,6 +49,7 @@ struct ContentView: View {
     @State private var lastCopiedTitle = ""
     @State private var clickedLinkId: String? = nil
     @State private var selectedMenuIndex = 0
+    @State private var searchText = ""
     @Namespace private var listNamespace
     @Environment(\.scenePhase) private var scenePhase
     @State private var showSettings = false
@@ -181,35 +182,60 @@ struct ContentView: View {
                     }
                     
                     // Reminders list
-                    List(filteredReminders, id: \.calendarItemIdentifier) { reminder in
+                    VStack {
+                        // Search bar and add button
                         HStack {
-                            Image(systemName: reminder.isCompleted ? "checkmark.circle.fill" : "circle")
-                                .onTapGesture {
-                                    remindersManager.toggleCompletion(for: reminder)
+                            TextField("Search or create reminder...", text: $searchText)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .frame(maxWidth: .infinity)
+                            
+                            Button(action: {
+                                guard !searchText.isEmpty else { return }
+                                Task {
+                                    try? await remindersManager.createReminder(withTitle: searchText)
+                                    searchText = ""
                                 }
-                            Text(reminder.title ?? "Untitled")
-                                .strikethrough(reminder.isCompleted)
-                            Spacer()
-                            Image(systemName: "link")
-                                .foregroundColor(.blue)
-                                .scaleEffect(clickedLinkId == reminder.calendarItemIdentifier ? 0.7 : 1.0)
-                                .animation(.spring(response: 0.2, dampingFraction: 0.5), value: clickedLinkId)
-                                .onTapGesture {
-                                    clickedLinkId = reminder.calendarItemIdentifier
-                                    remindersManager.copyRichTextLink(for: reminder)
-                                    // Reset the animation after a short delay
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                        clickedLinkId = nil
+                            }) {
+                                Image(systemName: "plus.circle.fill")
+                                    .foregroundColor(searchText.isEmpty ? .gray.opacity(0.5) : .white)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(searchText.isEmpty)
+                        }
+                        .padding(.horizontal)
+                        .padding(.vertical, 8)
+                        
+                        // Reminders list
+                        List(filteredReminders, id: \.calendarItemIdentifier) { reminder in
+                            HStack {
+                                Image(systemName: reminder.isCompleted ? "checkmark.circle.fill" : "circle")
+                                    .onTapGesture {
+                                        remindersManager.toggleCompletion(for: reminder)
                                     }
-                                }
+                                Text(reminder.title ?? "Untitled")
+                                    .strikethrough(reminder.isCompleted)
+                                Spacer()
+                                Image(systemName: "link")
+                                    .foregroundColor(.blue)
+                                    .scaleEffect(clickedLinkId == reminder.calendarItemIdentifier ? 0.7 : 1.0)
+                                    .animation(.spring(response: 0.2, dampingFraction: 0.5), value: clickedLinkId)
+                                    .onTapGesture {
+                                        clickedLinkId = reminder.calendarItemIdentifier
+                                        remindersManager.copyRichTextLink(for: reminder)
+                                        // Reset the animation after a short delay
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                            clickedLinkId = nil
+                                        }
+                                    }
+                            }
+                            .contentShape(Rectangle()) // Make the entire row clickable
+                            .onTapGesture {
+                                remindersManager.copyRichTextLink(for: reminder)
+                            }
+                            .listRowHoverStyle(isSelected: false)
                         }
-                        .contentShape(Rectangle()) // Make the entire row clickable
-                        .onTapGesture {
-                            remindersManager.copyRichTextLink(for: reminder)
-                        }
-                        .listRowHoverStyle(isSelected: false)
+                        .listStyle(.inset)
                     }
-                    .listStyle(.inset)
                 }
             case .denied, .restricted, .writeOnly:
                 Text("Please enable Reminders access in System Settings")
