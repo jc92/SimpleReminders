@@ -6,17 +6,36 @@ class TaskPickerViewModel: ObservableObject {
     @Published var selectedIndex = 0
     @Published var searchText = ""
     @Published var clickedLinkId: String? = nil
+    @Published var isShowingLists = false
+    @Published var selectedListId: String? = nil
+    @Published var selectedListTitle: String? = nil
+    
     private var allReminders: [EKReminder] = []
+    private var availableLists: [EKCalendar] = []
     
     init() {
         Task {
             await fetchAllReminders()
+            await fetchAvailableLists()
+        }
+    }
+    
+    func fetchAvailableLists() async {
+        let eventStore = RemindersManager.shared.eventStore
+        await MainActor.run {
+            self.availableLists = eventStore.calendars(for: .reminder)
         }
     }
     
     func fetchAllReminders() async {
         let eventStore = RemindersManager.shared.eventStore
-        let calendars = eventStore.calendars(for: .reminder)
+        let calendars: [EKCalendar]
+        if let selectedListId = selectedListId,
+           let calendar = eventStore.calendar(withIdentifier: selectedListId) {
+            calendars = [calendar]
+        } else {
+            calendars = eventStore.calendars(for: .reminder)
+        }
         let predicate = eventStore.predicateForReminders(in: calendars)
         
         let fetchedReminders = await withCheckedContinuation { continuation in
@@ -35,7 +54,7 @@ class TaskPickerViewModel: ObservableObject {
                 case (.none, .some):
                     return false
                 case (.none, .none):
-                    return reminder1.title?.localizedCompare(reminder2.title ?? "") == .orderedAscending
+                    return (reminder1.title ?? "") < (reminder2.title ?? "")
                 }
             }
         }
@@ -46,25 +65,68 @@ class TaskPickerViewModel: ObservableObject {
         if searchText.isEmpty {
             return openReminders
         }
+        
+        // If search text starts with #, show lists instead
+        if searchText.hasPrefix("#") {
+            isShowingLists = true
+            return []
+        }
+        
         return openReminders.filter { reminder in
             reminder.title?.localizedCaseInsensitiveContains(searchText) ?? false
         }
     }
     
+    var filteredLists: [EKCalendar] {
+        let searchTerm = searchText.dropFirst() // Remove the # prefix
+        if searchTerm.isEmpty {
+            return availableLists
+        }
+        return availableLists.filter { calendar in
+            calendar.title.localizedCaseInsensitiveContains(String(searchTerm))
+        }
+    }
+    
+    func selectList(_ calendar: EKCalendar) {
+        selectedListId = calendar.calendarIdentifier
+        selectedListTitle = calendar.title
+        searchText = ""
+        isShowingLists = false
+        Task {
+            await fetchAllReminders()
+        }
+    }
+    
+    func clearListFilter() {
+        selectedListId = nil
+        selectedListTitle = nil
+        Task {
+            await fetchAllReminders()
+        }
+    }
+    
     func moveSelection(up: Bool) {
-        if filteredReminders.isEmpty { return }
-        
-        if up {
-            selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : filteredReminders.count - 1
+        if isShowingLists {
+            let count = filteredLists.count
+            if count == 0 { return }
+            selectedIndex = (selectedIndex + (up ? -1 : 1) + count) % count
         } else {
-            selectedIndex = selectedIndex < filteredReminders.count - 1 ? selectedIndex + 1 : 0
+            let count = filteredReminders.count
+            if count == 0 { return }
+            selectedIndex = (selectedIndex + (up ? -1 : 1) + count) % count
         }
     }
     
     func confirmSelection() {
-        guard !filteredReminders.isEmpty else { return }
-        let reminder = filteredReminders[selectedIndex]
-        clickedLinkId = reminder.calendarItemIdentifier
-        RemindersManager.shared.copyRichTextLink(for: reminder)
+        if isShowingLists {
+            guard !filteredLists.isEmpty else { return }
+            let selectedList = filteredLists[selectedIndex]
+            selectList(selectedList)
+        } else {
+            guard !filteredReminders.isEmpty else { return }
+            let reminder = filteredReminders[selectedIndex]
+            clickedLinkId = reminder.calendarItemIdentifier
+            RemindersManager.shared.copyRichTextLink(for: reminder)
+        }
     }
 }
