@@ -18,6 +18,18 @@ class RemindersManager: ObservableObject {
     @Published var selectedListIdentifier: String?
     @Published var availableLists: [ReminderList] = []
     
+    // Cache structure for reminders
+    private struct ReminderCache {
+        let reminders: [EKReminder]
+        let timestamp: Date
+        let listId: String
+    }
+    
+    // Cache-related properties
+    private var reminderCache: [String: ReminderCache] = [:]
+    private let cacheValidityDuration: TimeInterval = 300 // 5 minutes
+    private var backgroundRefreshTimer: Timer?
+    
     // Persist selected list
     @AppStorage("lastSelectedList") private var lastSelectedList: String?
     
@@ -27,6 +39,64 @@ class RemindersManager: ObservableObject {
         Task {
             await requestAccess()
         }
+        setupBackgroundRefresh()
+    }
+    
+    private func setupBackgroundRefresh() {
+        backgroundRefreshTimer?.invalidate()
+        backgroundRefreshTimer = Timer.scheduledTimer(withTimeInterval: cacheValidityDuration, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                await self?.refreshCache()
+            }
+        }
+    }
+    
+    private func refreshCache() async {
+        for listId in reminderCache.keys {
+            await fetchRemindersForList(listId, forceFetch: true)
+        }
+    }
+    
+    private func isCacheValid(for listId: String) -> Bool {
+        guard let cache = reminderCache[listId] else { return false }
+        return Date().timeIntervalSince(cache.timestamp) < cacheValidityDuration
+    }
+    
+    private func fetchRemindersForList(_ listId: String, forceFetch: Bool = false) async -> [EKReminder] {
+        if !forceFetch && isCacheValid(for: listId) {
+            return reminderCache[listId]?.reminders ?? []
+        }
+        
+        guard let calendar = eventStore.calendar(withIdentifier: listId) else { return [] }
+        let predicate = eventStore.predicateForReminders(in: [calendar])
+        
+        let fetchedReminders = await withCheckedContinuation { continuation in
+            eventStore.fetchReminders(matching: predicate) { reminders in
+                continuation.resume(returning: reminders ?? [])
+            }
+        }
+        
+        let sortedReminders = fetchedReminders.sorted { reminder1, reminder2 in
+            switch (reminder1.dueDateComponents?.date, reminder2.dueDateComponents?.date) {
+            case (.some(let date1), .some(let date2)):
+                return date1 < date2
+            case (.some, .none):
+                return true
+            case (.none, .some):
+                return false
+            case (.none, .none):
+                return reminder1.title?.localizedCompare(reminder2.title ?? "") == .orderedAscending
+            }
+        }
+        
+        // Update cache
+        reminderCache[listId] = ReminderCache(
+            reminders: sortedReminders,
+            timestamp: Date(),
+            listId: listId
+        )
+        
+        return sortedReminders
     }
     
     func requestAccess() async {
@@ -73,27 +143,9 @@ class RemindersManager: ObservableObject {
             return
         }
 
-        let predicate = eventStore.predicateForReminders(in: [eventStore.calendar(withIdentifier: selectedList)!])
-        
-        let fetchedReminders = await withCheckedContinuation { continuation in
-            eventStore.fetchReminders(matching: predicate) { reminders in
-                continuation.resume(returning: reminders ?? [])
-            }
-        }
-        
+        let fetchedReminders = await fetchRemindersForList(selectedList)
         await MainActor.run {
-            self.reminders = fetchedReminders.sorted { reminder1, reminder2 in
-                switch (reminder1.dueDateComponents?.date, reminder2.dueDateComponents?.date) {
-                case (.some(let date1), .some(let date2)):
-                    return date1 < date2
-                case (.some, .none):
-                    return true
-                case (.none, .some):
-                    return false
-                case (.none, .none):
-                    return reminder1.title?.localizedCompare(reminder2.title ?? "") == .orderedAscending
-                }
-            }
+            self.reminders = fetchedReminders
         }
     }
     
