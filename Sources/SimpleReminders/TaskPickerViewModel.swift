@@ -6,22 +6,8 @@ import AppKit
 @MainActor
 class TaskPickerViewModel: ObservableObject {
     @Published var selectedIndex = 0
-    @Published var searchText = "" {
-        didSet {
-            if searchText.hasPrefix("#") {
-                let searchTerm = String(searchText.dropFirst()).trimmingCharacters(in: .whitespaces)
-                if !searchTerm.isEmpty {
-                    // Try to find a matching list
-                    if let matchingList = availableLists.first(where: { $0.title.localizedCaseInsensitiveContains(searchTerm) }) {
-                        selectList(matchingList)
-                    }
-                } else {
-                    // If only # is typed, show all lists
-                    clearListFilter()
-                }
-            }
-        }
-    }
+    @Published var searchText = ""
+    @Published var pendingListFilter = false
     @Published var clickedLinkId: String? = nil
     @Published var isShowingListPicker = false
     @Published var selectedListId: String? = nil
@@ -80,11 +66,17 @@ class TaskPickerViewModel: ObservableObject {
     
     var filteredReminders: [EKReminder] {
         let openReminders = allReminders.filter { !$0.isCompleted }
-        if searchText.isEmpty || searchText.hasPrefix("#") {
-            return openReminders
+        
+        // If there's a pending list filter, apply it
+        let filteredByList = selectedListId == nil ? openReminders :
+            openReminders.filter { $0.calendar.calendarIdentifier == selectedListId }
+        
+        // Then apply text search if not in list filter mode
+        if searchText.isEmpty || (searchText.hasPrefix("#") && !pendingListFilter) {
+            return filteredByList
         }
         
-        return openReminders.filter { reminder in
+        return filteredByList.filter { reminder in
             reminder.title?.localizedCaseInsensitiveContains(searchText) ?? false
         }
     }
@@ -101,52 +93,43 @@ class TaskPickerViewModel: ObservableObject {
     func selectList(_ calendar: EKCalendar) {
         selectedListId = calendar.calendarIdentifier
         selectedListTitle = calendar.title
-        isShowingListPicker = false
-        listSearchText = ""
-        
-        // Immediately filter existing reminders
-        allReminders = allReminders.filter { reminder in
-            reminder.calendar.calendarIdentifier == calendar.calendarIdentifier
-        }
-        
-        // Then fetch fresh data in the background
         Task {
             await fetchAllReminders()
+            // Force a UI update
+            objectWillChange.send()
         }
     }
     
     func clearListFilter() {
         selectedListId = nil
         selectedListTitle = nil
-        
-        // Immediately show all reminders from all calendars
-        let eventStore = RemindersManager.shared.eventStore
-        let calendars = eventStore.calendars(for: .reminder)
-        let predicate = eventStore.predicateForReminders(in: calendars)
-        
-        // Use existing reminders from all calendars immediately
-        eventStore.fetchReminders(matching: predicate) { [weak self] reminders in
-            guard let self = self else { return }
-            Task { @MainActor in
-                self.allReminders = (reminders ?? []).sorted { reminder1, reminder2 in
-                    switch (reminder1.dueDateComponents?.date, reminder2.dueDateComponents?.date) {
-                    case (.some(let date1), .some(let date2)):
-                        return date1 < date2
-                    case (.some, .none):
-                        return true
-                    case (.none, .some):
-                        return false
-                    case (.none, .none):
-                        return (reminder1.title ?? "") < (reminder2.title ?? "")
-                    }
-                }
-            }
-        }
-        
-        // Then fetch fresh data in the background
         Task {
             await fetchAllReminders()
+            // Force a UI update
+            objectWillChange.send()
         }
+    }
+    
+    func handleEnterKey() -> Bool {
+        if searchText.hasPrefix("#") {
+            let searchTerm = String(searchText.dropFirst()).trimmingCharacters(in: .whitespaces)
+            pendingListFilter = true
+            if !searchTerm.isEmpty {
+                // Try to find a matching list
+                if let matchingList = availableLists.first(where: { $0.title.localizedCaseInsensitiveContains(searchTerm) }) {
+                    selectList(matchingList)
+                    // Clear the search text after applying filter
+                    searchText = ""
+                }
+            } else {
+                // If only # is typed, show all lists
+                clearListFilter()
+                // Clear the search text after clearing filter
+                searchText = ""
+            }
+            return true // Handled the Enter key
+        }
+        return false // Not handled, let the normal reminder creation flow proceed
     }
     
     func moveSelection(up: Bool) {

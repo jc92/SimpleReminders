@@ -35,6 +35,7 @@ struct CustomTextField: NSViewRepresentable {
     @Binding var text: String
     var font: NSFont
     var onEditingChanged: (Bool) -> Void = { _ in }
+    var onEnterKey: () -> Bool = { false }
     
     func makeNSView(context: Context) -> CustomNSTextField {
         let textField = CustomNSTextField()
@@ -63,16 +64,18 @@ struct CustomTextField: NSViewRepresentable {
     }
     
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, onEditingChanged: onEditingChanged)
+        Coordinator(text: $text, onEditingChanged: onEditingChanged, onEnterKey: onEnterKey)
     }
     
     class Coordinator: NSObject, NSTextFieldDelegate {
         var text: Binding<String>
         var onEditingChanged: (Bool) -> Void
+        var onEnterKey: () -> Bool
         
-        init(text: Binding<String>, onEditingChanged: @escaping (Bool) -> Void) {
+        init(text: Binding<String>, onEditingChanged: @escaping (Bool) -> Void, onEnterKey: @escaping () -> Bool) {
             self.text = text
             self.onEditingChanged = onEditingChanged
+            self.onEnterKey = onEnterKey
         }
         
         func controlTextDidChange(_ obj: Notification) {
@@ -87,6 +90,16 @@ struct CustomTextField: NSViewRepresentable {
         
         func controlTextDidEndEditing(_ obj: Notification) {
             onEditingChanged(false)
+        }
+        
+        func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+                // Only handle Enter if we're filtering by list
+                if text.wrappedValue.hasPrefix("#") {
+                    return onEnterKey()
+                }
+            }
+            return false
         }
     }
 }
@@ -119,7 +132,21 @@ struct TaskPickerView: View {
                         .frame(width: 300, height: 400)
                     }
                     
-                    CustomTextField(text: $viewModel.searchText, font: .systemFont(ofSize: 24))
+                    CustomTextField(
+                        text: $viewModel.searchText,
+                        font: .systemFont(ofSize: 24, weight: .regular),
+                        onEditingChanged: { isEditing in
+                            isSearchFocused = isEditing
+                        },
+                        onEnterKey: {
+                            let result = viewModel.handleEnterKey()
+                            // Force view update after filter change
+                            if result {
+                                viewModel.objectWillChange.send()
+                            }
+                            return result
+                        }
+                    )
                         .focused($isSearchFocused)
                         .onChange(of: viewModel.clickedLinkId) { _ in
                             dismiss()

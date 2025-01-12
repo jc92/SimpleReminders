@@ -49,6 +49,14 @@ class TaskPickerPanel: NSPanel {
                     return nil
                 }
             case 36: // Return
+                // If we're filtering by list (text starts with #), handle it differently
+                if self.contentViewModel.searchText.hasPrefix("#") {
+                    let handled = self.contentViewModel.handleEnterKey()
+                    if handled {
+                        return nil
+                    }
+                }
+                // Otherwise proceed with normal selection
                 self.contentViewModel.confirmSelection()
                 if !self.contentViewModel.isShowingListPicker {
                     self.close()
