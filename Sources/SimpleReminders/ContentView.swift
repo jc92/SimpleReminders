@@ -61,8 +61,7 @@ struct ContentView: View {
     }
     
     func copyDeepLink(for reminder: EKReminder) {
-        let deepLink = remindersManager.generateDeepLink(for: reminder)
-        remindersManager.copyToClipboard(deepLink)
+        remindersManager.copyRichTextLink(for: reminder)
         lastCopiedTitle = reminder.title ?? "Untitled"
         showCopyNotification = true
         
