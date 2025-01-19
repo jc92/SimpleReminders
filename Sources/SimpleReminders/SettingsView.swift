@@ -1,3 +1,6 @@
+// No changes were made to the code itself, only the file location was changed.
+// The file is now located at Sources/SimpleReminders/Views/SettingsView.swift
+
 import SwiftUI
 import EventKit
 

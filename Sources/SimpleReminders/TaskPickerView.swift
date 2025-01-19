@@ -94,10 +94,8 @@ struct CustomTextField: NSViewRepresentable {
         
         func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
             if commandSelector == #selector(NSResponder.insertNewline(_:)) {
-                // Only handle Enter if we're filtering by list
-                if text.wrappedValue.hasPrefix("#") {
-                    return onEnterKey()
-                }
+                // Call onEnterKey regardless of the searchText content
+                return onEnterKey()
             }
             return false
         }
@@ -139,12 +137,8 @@ struct TaskPickerView: View {
                             isSearchFocused = isEditing
                         },
                         onEnterKey: {
-                            let result = viewModel.handleEnterKey()
-                            // Force view update after filter change
-                            if result {
-                                viewModel.objectWillChange.send()
-                            }
-                            return result
+                            handleTaskCreation()
+                            return true
                         }
                     )
                     .focused($isSearchFocused)
@@ -153,9 +147,7 @@ struct TaskPickerView: View {
                     }
                     
                     Button(action: {
-                        Task {
-                            await viewModel.createReminder()
-                        }
+                        handleTaskCreation()
                     }) {
                         Image(systemName: "plus.circle.fill")
                             .foregroundColor(viewModel.searchText.isEmpty ? .gray.opacity(0.5) : .white)
@@ -228,10 +220,41 @@ struct TaskPickerView: View {
         .onAppear {
             isSearchFocused = true
         }
+        .onSubmit {
+            handleTaskCreation()
+        }
+    }
+    
+    private func handleTaskCreation() {
+        Task {
+            if let newReminder = await viewModel.createReminder() {
+                RemindersManager.shared.copyRichTextLink(for: newReminder)
+                dismiss()
+                pasteLinkInNotes()
+            } else {
+                print("Failed to create reminder")
+            }
+        }
+    }
+
+    private func pasteLinkInNotes() {
+        let script = """
+        tell application \"Notes\"
+            activate
+            tell application \"System Events\" to keystroke \"v\" using command down
+        end tell
+        """
+        var error: NSDictionary?
+        if let scriptObject = NSAppleScript(source: script) {
+            scriptObject.executeAndReturnError(&error)
+        }
+        if let error = error {
+            print("Error: \(error)")
+        }
     }
     
     private var reminderListView: some View {
-        List(viewModel.filteredReminders, id: \.calendarItemIdentifier, selection: .constant(viewModel.selectedIndex)) { reminder in
+        List(viewModel.filteredReminders, id: \.calendarItemIdentifier, selection: $viewModel.selectedIndex) { reminder in
             HStack {
                 Circle()
                     .fill(Color(nsColor: reminder.calendar.color))

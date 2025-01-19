@@ -236,11 +236,20 @@ class RemindersManager: ObservableObject {
             return
         }
         
+        // Remove links from the title
+        let cleanedTitle = title.replacingOccurrences(of: "https?://[^\\s]+", with: "", options: .regularExpression)
+        
         let reminder = EKReminder(eventStore: eventStore)
-        reminder.title = title
+        reminder.title = cleanedTitle
         reminder.calendar = calendar
         
+        // Add the deep link to the reminder's notes
+        let deepLink = generateDeepLink(for: reminder)
+        reminder.notes = "Deep Link: \(deepLink)"
+        
         try eventStore.save(reminder, commit: true)
+        // Copy the rich text link to the clipboard
+        copyRichTextLink(for: reminder)
         await fetchReminders()
     }
     

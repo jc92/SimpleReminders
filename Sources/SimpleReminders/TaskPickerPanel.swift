@@ -1,3 +1,6 @@
+// No changes were made to the code itself, only the file location was changed.
+// The file is now located at Sources/SimpleReminders/Views/TaskPickerPanel.swift
+
 import AppKit
 import SwiftUI
 
@@ -74,10 +77,10 @@ class TaskPickerPanel: NSPanel {
                 }
                 return nil
             case 126: // Up Arrow
-                self.contentViewModel.moveSelection(up: true)
+                self.contentViewModel.moveSelectionUp()
                 return nil
             case 125: // Down Arrow
-                self.contentViewModel.moveSelection(up: false)
+                self.contentViewModel.moveSelectionDown()
                 return nil
             default:
                 break

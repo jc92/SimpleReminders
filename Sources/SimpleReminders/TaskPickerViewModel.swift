@@ -138,6 +138,14 @@ class TaskPickerViewModel: ObservableObject {
             }
             return true // Handled the Enter key
         }
+        
+        // Create a new reminder if no existing reminders match the search and no # prefix
+        if filteredReminders.isEmpty && !searchText.hasPrefix("#") {
+            Task {
+                await createReminder()
+            }
+            return true
+        }
         return false // Not handled, let the normal reminder creation flow proceed
     }
     
@@ -159,6 +167,18 @@ class TaskPickerViewModel: ObservableObject {
             let count = filteredReminders.count
             if count == 0 { return }
             selectedIndex = (selectedIndex + (up ? -1 : 1) + count) % count
+        }
+    }
+    
+    func moveSelectionUp() {
+        if selectedIndex > 0 {
+            selectedIndex -= 1
+        }
+    }
+
+    func moveSelectionDown() {
+        if selectedIndex < filteredReminders.count - 1 {
+            selectedIndex += 1
         }
     }
     
@@ -195,8 +215,8 @@ class TaskPickerViewModel: ObservableObject {
         }
     }
     
-    func createReminder() async {
-        guard !searchText.isEmpty else { return }
+    func createReminder() async -> EKReminder? {
+        guard !searchText.isEmpty else { return nil }
         
         let eventStore = RemindersManager.shared.eventStore
         // Use selected list if set, otherwise use default list
@@ -205,27 +225,18 @@ class TaskPickerViewModel: ObservableObject {
         
         guard let calendar = calendar else {
             print("Error: No valid calendar found for reminder creation")
-            return
+            return nil
         }
         
         print("Creating reminder in calendar: \(calendar.title) (id: \(calendar.calendarIdentifier))")
         let reminder = EKReminder(eventStore: eventStore)
         reminder.title = searchText
         reminder.calendar = calendar
-        
-        // Add note links for both platforms if a note is selected
-        if let noteIdentifier = NotesManager.shared.getLatestNoteIdentifier() {
-            reminder.notes = """
-            Link on Mac: notes://showNote?identifier=\(noteIdentifier)
-            Link on iOS: mobilenotes://showNote?identifier=\(noteIdentifier)
-            """
-            print("Added note links to reminder")
-        } else {
-            print("No note selected in Notes.app")
-        }
+    
         
         try? eventStore.save(reminder, commit: true)
         searchText = ""
         await fetchAllReminders()
+        return reminder
     }
 }
