@@ -2,6 +2,51 @@ import SwiftUI
 import EventKit
 import AppKit
 
+class TextFieldCoordinator: NSObject, NSTextFieldDelegate {
+    var text: Binding<String>
+    var onEditingChanged: (Bool) -> Void
+    var onEnterKey: () -> Bool
+    var onArrowUp: () -> Void
+    var onArrowDown: () -> Void
+    weak var viewModel: TaskPickerViewModel?
+    
+    init(text: Binding<String>, 
+         onEditingChanged: @escaping (Bool) -> Void, 
+         onEnterKey: @escaping () -> Bool,
+         onArrowUp: @escaping () -> Void,
+         onArrowDown: @escaping () -> Void,
+         viewModel: TaskPickerViewModel) {
+        self.text = text
+        self.onEditingChanged = onEditingChanged
+        self.onEnterKey = onEnterKey
+        self.onArrowUp = onArrowUp
+        self.onArrowDown = onArrowDown
+        self.viewModel = viewModel
+    }
+    
+    func controlTextDidChange(_ obj: Notification) {
+        if let textField = obj.object as? NSTextField {
+            text.wrappedValue = textField.stringValue
+            viewModel?.updateSearchText(textField.stringValue)
+        }
+    }
+    
+    func controlTextDidBeginEditing(_ obj: Notification) {
+        onEditingChanged(true)
+    }
+    
+    func controlTextDidEndEditing(_ obj: Notification) {
+        onEditingChanged(false)
+    }
+    
+    func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+        if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+            return onEnterKey()
+        }
+        return false
+    }
+}
+
 class CustomNSTextField: NSTextField {
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         if event.modifierFlags.contains(.command) {
@@ -29,6 +74,23 @@ class CustomNSTextField: NSTextField {
         }
         return super.performKeyEquivalent(with: event)
     }
+    
+    override func keyDown(with event: NSEvent) {
+        switch event.keyCode {
+        case 125: // Down arrow
+            if let onArrowDown = (delegate as? TextFieldCoordinator)?.onArrowDown {
+                onArrowDown()
+                return
+            }
+        case 126: // Up arrow
+            if let onArrowUp = (delegate as? TextFieldCoordinator)?.onArrowUp {
+                onArrowUp()
+                return
+            }
+        default:
+            super.keyDown(with: event)
+        }
+    }
 }
 
 struct CustomTextField: NSViewRepresentable {
@@ -36,6 +98,9 @@ struct CustomTextField: NSViewRepresentable {
     var font: NSFont
     var onEditingChanged: (Bool) -> Void = { _ in }
     var onEnterKey: () -> Bool = { false }
+    var onArrowUp: () -> Void = { }
+    var onArrowDown: () -> Void = { }
+    var viewModel: TaskPickerViewModel
     
     func makeNSView(context: Context) -> CustomNSTextField {
         let textField = CustomNSTextField()
@@ -63,42 +128,15 @@ struct CustomTextField: NSViewRepresentable {
         nsView.stringValue = text
     }
     
-    func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, onEditingChanged: onEditingChanged, onEnterKey: onEnterKey)
-    }
-    
-    class Coordinator: NSObject, NSTextFieldDelegate {
-        var text: Binding<String>
-        var onEditingChanged: (Bool) -> Void
-        var onEnterKey: () -> Bool
-        
-        init(text: Binding<String>, onEditingChanged: @escaping (Bool) -> Void, onEnterKey: @escaping () -> Bool) {
-            self.text = text
-            self.onEditingChanged = onEditingChanged
-            self.onEnterKey = onEnterKey
-        }
-        
-        func controlTextDidChange(_ obj: Notification) {
-            if let textField = obj.object as? NSTextField {
-                text.wrappedValue = textField.stringValue
-            }
-        }
-        
-        func controlTextDidBeginEditing(_ obj: Notification) {
-            onEditingChanged(true)
-        }
-        
-        func controlTextDidEndEditing(_ obj: Notification) {
-            onEditingChanged(false)
-        }
-        
-        func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
-            if commandSelector == #selector(NSResponder.insertNewline(_:)) {
-                // Call onEnterKey regardless of the searchText content
-                return onEnterKey()
-            }
-            return false
-        }
+    func makeCoordinator() -> TextFieldCoordinator {
+        TextFieldCoordinator(
+            text: $text,
+            onEditingChanged: onEditingChanged,
+            onEnterKey: onEnterKey,
+            onArrowUp: onArrowUp,
+            onArrowDown: onArrowDown,
+            viewModel: viewModel
+        )
     }
 }
 
@@ -139,7 +177,14 @@ struct TaskPickerView: View {
                         onEnterKey: {
                             handleTaskCreation()
                             return true
-                        }
+                        },
+                        onArrowUp: {
+                            viewModel.moveSelectionUp()
+                        },
+                        onArrowDown: {
+                            viewModel.moveSelectionDown()
+                        },
+                        viewModel: viewModel
                     )
                     .focused($isSearchFocused)
                     .onChange(of: viewModel.clickedLinkId) { _ in
@@ -219,6 +264,7 @@ struct TaskPickerView: View {
         .frame(width: 600, height: 400)
         .onAppear {
             isSearchFocused = true
+            viewModel.validateAndUpdateSelection()
         }
         .onSubmit {
             handleTaskCreation()

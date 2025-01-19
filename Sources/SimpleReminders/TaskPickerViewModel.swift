@@ -70,6 +70,17 @@ class TaskPickerViewModel: ObservableObject {
                     return (reminder1.title ?? "") < (reminder2.title ?? "")
                 }
             }
+            // Reset selection if it's invalid
+            validateAndUpdateSelection()
+        }
+    }
+    
+    public func validateAndUpdateSelection() {
+        let filteredCount = filteredReminders.count
+        if filteredCount == 0 {
+            selectedIndex = 0
+        } else if selectedIndex >= filteredCount {
+            selectedIndex = filteredCount - 1
         }
     }
     
@@ -87,15 +98,6 @@ class TaskPickerViewModel: ObservableObject {
         
         return filteredByList.filter { reminder in
             reminder.title?.localizedCaseInsensitiveContains(searchText) ?? false
-        }
-    }
-    
-    var filteredLists: [EKCalendar] {
-        if listSearchText.isEmpty {
-            return availableLists
-        }
-        return availableLists.filter { calendar in
-            calendar.title.localizedCaseInsensitiveContains(listSearchText)
         }
     }
     
@@ -171,14 +173,38 @@ class TaskPickerViewModel: ObservableObject {
     }
     
     func moveSelectionUp() {
-        if selectedIndex > 0 {
-            selectedIndex -= 1
+        if !filteredReminders.isEmpty {
+            if selectedIndex > 0 {
+                selectedIndex -= 1
+            } else {
+                selectedIndex = filteredReminders.count - 1
+            }
         }
     }
-
+    
     func moveSelectionDown() {
+        if !filteredReminders.isEmpty {
+            if selectedIndex < filteredReminders.count - 1 {
+                selectedIndex += 1
+            } else {
+                selectedIndex = 0
+            }
+        }
+    }
+    
+    func selectPreviousItem() {
+        if selectedIndex > 0 {
+            selectedIndex -= 1
+        } else if !filteredReminders.isEmpty {
+            selectedIndex = filteredReminders.count - 1
+        }
+    }
+    
+    func selectNextItem() {
         if selectedIndex < filteredReminders.count - 1 {
             selectedIndex += 1
+        } else {
+            selectedIndex = 0
         }
     }
     
@@ -238,5 +264,19 @@ class TaskPickerViewModel: ObservableObject {
         searchText = ""
         await fetchAllReminders()
         return reminder
+    }
+    
+    func updateSearchText(_ newText: String) {
+        searchText = newText
+        validateAndUpdateSelection()
+    }
+    
+    var filteredLists: [EKCalendar] {
+        if listSearchText.isEmpty {
+            return availableLists
+        }
+        return availableLists.filter { calendar in
+            calendar.title.localizedCaseInsensitiveContains(listSearchText)
+        }
     }
 }
