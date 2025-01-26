@@ -19,12 +19,55 @@ jobs:
       
     - name: Build Release
       run: |
-        swift build -c release
+        swift build -c release -Xswiftc "-target" -Xswiftc "x86_64-apple-macosx10.15"
+        
+    - name: Create App Bundle
+      run: |
+        APP_NAME="SimpleReminders"
+        rm -rf "${APP_NAME}.app"
+        mkdir -p "${APP_NAME}.app/Contents/MacOS"
+        mkdir -p "${APP_NAME}.app/Contents/Resources"
+        cp .build/release/SimpleReminders "${APP_NAME}.app/Contents/MacOS/"
+        cp Sources/SimpleReminders/Info.plist "${APP_NAME}.app/Contents/"
+        
+    - name: Import Certificate
+      env:
+        BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+        P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+        KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+      run: |
+        # Create variables
+        CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+        KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+        # Import certificate from secrets
+        echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+
+        # Create temporary keychain
+        security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+        # Import certificate to keychain
+        security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security list-keychain -d user -s $KEYCHAIN_PATH
+
+    - name: Sign App
+      run: |
+        APP_NAME="SimpleReminders"
+        codesign --force --options runtime --sign "Developer ID Application" \
+          --entitlements "SimpleReminders.entitlements" \
+          "${APP_NAME}.app"
         
     - name: Create DMG
       run: |
         chmod +x create_dmg.sh
         ./create_dmg.sh
+        
+    - name: Sign DMG
+      run: |
+        VERSION="${GITHUB_REF#refs/tags/v}"
+        codesign --force --sign "Developer ID Application" "SimpleReminders-${VERSION}.dmg"
         
     - name: Get version from tag
       id: get_version
@@ -38,7 +81,7 @@ jobs:
           Release ${{ steps.get_version.outputs.VERSION }} of SimpleReminders
           
           ## Installation
-          1. Download SimpleReminders-0.1.0-beta.dmg
+          1. Download SimpleReminders DMG file
           2. Open the DMG file
           3. Drag SimpleReminders to your Applications folder
           4. Launch SimpleReminders from your Applications folder
@@ -46,11 +89,9 @@ jobs:
           ⚠️ Note: When you first launch the app, it will request permission to access your reminders.
           
           ## What's Changed
-          - Please see commit history for details
+          - Fixed keyboard shortcut (Cmd+Shift+R) to show TaskPickerPanel instead of menu bar popover
+          - Improved app signing and security
           
           ## Feedback
-          Your feedback is valuable! Please report any issues or suggestions in the Issues section.
-        draft: false
-        prerelease: true
-        files: |
-          SimpleReminders-*.dmg
+          If you encounter any issues, please report them in the Issues section.
+        files: SimpleReminders-*.dmg
