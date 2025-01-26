@@ -21,6 +21,23 @@ cd SimpleReminders
 swift run
 ```
 
+## Installation
+
+You can install SimpleReminders in two ways:
+
+### Option 1: Download the DMG
+1. Go to the [Releases](../../releases) page
+2. Download the latest `SimpleReminders-1.0.dmg`
+3. Open the DMG file
+4. Drag SimpleReminders to your Applications folder
+5. Launch SimpleReminders from your Applications folder
+
+### Option 2: Build from Source
+1. Clone this repository
+2. Open Terminal and navigate to the project directory
+3. Run `swift build -c release`
+4. The binary will be in `.build/release/SimpleReminders`
+
 ## Project Structure
 
 ```
