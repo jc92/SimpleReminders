@@ -2,6 +2,7 @@ import SwiftUI
 import EventKit
 import AppKit
 
+@available(macOS 12.0, *)
 struct TaskPickerView: View {
     @ObservedObject var viewModel: TaskPickerViewModel
     @Environment(\.dismiss) private var dismiss

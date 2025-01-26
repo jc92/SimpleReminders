@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "SimpleReminders",
     platforms: [
-        .macOS(.v13)
+        .macOS(.v13)  // Required for List selection and other SwiftUI features
     ],
     products: [
         .executable(name: "SimpleReminders", targets: ["SimpleReminders"]),

@@ -23,9 +23,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Create the status item
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
-            if let image = NSImage(systemSymbolName: "checklist", accessibilityDescription: "Reminders") {
-                image.isTemplate = true  // This ensures proper dark/light mode support
-                button.image = image
+            if #available(macOS 11.0, *) {
+                if let image = NSImage(systemSymbolName: "checklist", accessibilityDescription: "Reminders") {
+                    image.isTemplate = true  // This ensures proper dark/light mode support
+                    button.image = image
+                }
+            } else {
+                // Fallback for older macOS versions
+                if let image = NSImage(named: NSImage.actionTemplateName) {
+                    image.isTemplate = true
+                    button.image = image
+                }
             }
             button.action = #selector(togglePopover)
             button.target = self
