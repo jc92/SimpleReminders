@@ -27,7 +27,7 @@ class RemindersManager: ObservableObject {
         set { listService.setDefaultList(newValue) }
     }
     
-    init() {
+    fileprivate init() {
         print("RemindersManager init - defaultListId: \(listService.defaultListId), lastSelectedList: \(String(describing: listService.getLastSelectedList()))")
         // Clear any existing selection to ensure proper initialization
         selectedListIdentifier = nil

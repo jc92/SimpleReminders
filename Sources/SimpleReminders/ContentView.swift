@@ -341,5 +341,5 @@ extension Array {
 
 #Preview {
     ContentView()
-        .environmentObject(RemindersManager())
+        .environmentObject(RemindersManager.shared)
 }
