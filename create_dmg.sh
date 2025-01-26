@@ -2,8 +2,11 @@
 
 # Set variables
 APP_NAME="SimpleReminders"
-VERSION="0.1.0-beta"
+VERSION="0.1.1-beta"
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
+
+# Build for production
+swift build -c release
 
 # Create app bundle structure
 mkdir -p "${APP_NAME}.app/Contents/MacOS"
@@ -14,6 +17,12 @@ cp .build/release/SimpleReminders "${APP_NAME}.app/Contents/MacOS/"
 
 # Copy Info.plist
 cp Sources/SimpleReminders/Info.plist "${APP_NAME}.app/Contents/"
+
+# Copy entitlements
+cp SimpleReminders.entitlements "${APP_NAME}.app/Contents/"
+
+# Sign the app with entitlements
+codesign --force --deep --sign - --entitlements SimpleReminders.entitlements "${APP_NAME}.app"
 
 # Create DMG
 # Create a temporary directory for mounting
