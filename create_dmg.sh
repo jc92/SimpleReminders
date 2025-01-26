@@ -2,7 +2,7 @@
 
 # Set variables
 APP_NAME="SimpleReminders"
-VERSION="1.0"
+VERSION="0.1.0-beta"
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 
 # Create app bundle structure

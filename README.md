@@ -27,7 +27,7 @@ You can install SimpleReminders in two ways:
 
 ### Option 1: Download the DMG
 1. Go to the [Releases](https://github.com/jc92/SimpleReminders/releases) page
-2. Download the latest `SimpleReminders-1.0.dmg`
+2. Download the latest `SimpleReminders-0.1.0-beta.dmg`
 3. Open the DMG file
 4. Drag SimpleReminders to your Applications folder
 5. Launch SimpleReminders from your Applications folder
