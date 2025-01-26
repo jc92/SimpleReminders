@@ -1,7 +1,9 @@
 import AppKit
 import SwiftUI
 import HotKey
+import EventKit
 
+@MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
@@ -9,8 +11,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var keyboardMonitor: Any?
     private var hotKey: HotKey?
     private var contentView: ContentView!
+    private let remindersManager = RemindersManager.shared
     
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Request Reminders access immediately
+        Task {
+            await remindersManager.requestAccess()
+        }
+        
         // Create the status item
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {

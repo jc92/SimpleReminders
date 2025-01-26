@@ -16,5 +16,7 @@
     <string>13.0</string>
     <key>LSUIElement</key>
     <true/>
+    <key>NSRemindersUsageDescription</key>
+    <string>SimpleReminders needs access to your reminders to display and manage them.</string>
 </dict>
 </plist>

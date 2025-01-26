@@ -27,6 +27,12 @@ A lightweight macOS menu bar app for quick access to your Apple Reminders. Built
 4. Drag SimpleReminders to your Applications folder
 5. Launch SimpleReminders from your Applications folder
 
+When you first launch the app, it will request permission to access your reminders. This is required for the app to function. You can manage this permission at any time in System Settings:
+
+1. Open System Settings
+2. Go to Privacy & Security → Reminders
+3. Find SimpleReminders in the list and enable/disable access
+
 ### Option 2: Build from Source
 1. Clone this repository
 2. Open Terminal and navigate to the project directory
