@@ -1,0 +1,56 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on version tags
+
+jobs:
+  build:
+    runs-on: macos-latest
+    permissions:
+      contents: write # Needed for creating releases
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Swift
+      uses: swift-actions/setup-swift@v1
+      
+    - name: Build Release
+      run: |
+        swift build -c release
+        
+    - name: Create DMG
+      run: |
+        chmod +x create_dmg.sh
+        ./create_dmg.sh
+        
+    - name: Get version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: "SimpleReminders ${{ steps.get_version.outputs.VERSION }}"
+        body: |
+          Release ${{ steps.get_version.outputs.VERSION }} of SimpleReminders
+          
+          ## Installation
+          1. Download SimpleReminders-0.1.0-beta.dmg
+          2. Open the DMG file
+          3. Drag SimpleReminders to your Applications folder
+          4. Launch SimpleReminders from your Applications folder
+          
+          ⚠️ Note: When you first launch the app, it will request permission to access your reminders.
+          
+          ## What's Changed
+          - Please see commit history for details
+          
+          ## Feedback
+          Your feedback is valuable! Please report any issues or suggestions in the Issues section.
+        draft: false
+        prerelease: true
+        files: |
+          SimpleReminders-*.dmg
