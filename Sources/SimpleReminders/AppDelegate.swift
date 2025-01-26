@@ -22,9 +22,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Create the status item
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "checklist", accessibilityDescription: "Reminders")
+            if let image = NSImage(systemSymbolName: "checklist", accessibilityDescription: "Reminders") {
+                image.isTemplate = true  // This ensures proper dark/light mode support
+                button.image = image
+            }
             button.action = #selector(togglePopover)
             button.target = self
+            button.imagePosition = .imageLeft
         }
         
         // Create content view
@@ -33,7 +37,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Create popover
         popover = NSPopover()
         popover.contentSize = NSSize(width: 400, height: 500)
-        popover.behavior = .applicationDefined
+        popover.behavior = .transient  // Changed to transient for better behavior
         popover.contentViewController = NSHostingController(rootView: contentView)
         
         // Create menu
@@ -44,12 +48,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         mainMenu.addItem(appMenuItem)
         let appMenu = NSMenu()
         appMenuItem.submenu = appMenu
+        
+        // Add menu items
+        appMenu.addItem(withTitle: "About SimpleReminders", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(NSMenuItem.separator())
+        appMenu.addItem(withTitle: "Preferences...", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: ",")
+        appMenu.addItem(NSMenuItem.separator())
         appMenu.addItem(withTitle: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         
         // Setup global shortcut (Command + Shift + R)
         hotKey = HotKey(key: .r, modifiers: [.command, .shift])
         hotKey?.keyDownHandler = { [weak self] in
-            self?.showTaskPicker()
+            self?.togglePopover()
         }
         
         // Monitor clicks outside the popover
@@ -136,9 +146,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func showTaskPicker() {
-        if let currentApp = NSWorkspace.shared.frontmostApplication,
-           currentApp.bundleIdentifier == "com.apple.Notes" {
-            TaskPickerPanel.shared.show()
-        }
+        // Show task picker regardless of the active application
+        TaskPickerPanel.shared.show()
     }
 }
