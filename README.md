@@ -1,29 +1,24 @@
-# Simple Reminders
+# SimpleReminders
 
-A native macOS application for managing reminders using SwiftUI and EventKit.
+A lightweight macOS menu bar app for quick access to your Apple Reminders. Built with SwiftUI and native Apple frameworks.
+
+## Features
+
+- 🔍 Quick access from menu bar
+- ⚡️ Fast reminder creation
+- 📝 Multiple reminder list support
+- 🎯 Smart list filtering and search
+- ⌨️ Global hotkey support
+- 🔄 Real-time sync with Apple Reminders
+- 🎨 Native macOS UI/UX
+- 🔒 Privacy-focused (uses only local data)
 
 ## Requirements
 
-- macOS 14.0 or later
-- Xcode 15.0 or later
-- Swift 5.9 or later
-
-## Setup
-
-1. Clone the repository:
-```bash
-git clone <your-repository-url>
-cd SimpleReminders
-```
-
-2. Build and run the project:
-```bash
-swift run
-```
+- macOS 13.0 or later
+- Xcode 15.0 or later (for development)
 
 ## Installation
-
-You can install SimpleReminders in two ways:
 
 ### Option 1: Download the DMG
 1. Go to the [Releases](https://github.com/jc92/SimpleReminders/releases) page
@@ -42,68 +37,60 @@ You can install SimpleReminders in two ways:
 
 ```
 SimpleReminders/
-├── Package.swift              # Swift package manifest
 ├── Sources/
 │   └── SimpleReminders/
-│       ├── main.swift         # Application entry point
-│       ├── AppDelegate.swift  # Main application delegate
-│       ├── ContentView.swift  # Main SwiftUI view
-│       └── RemindersManager.swift  # Reminders management logic
+│       ├── Services/           # Core services for app functionality
+│       │   ├── ReminderCacheService.swift    # Caching layer for reminders
+│       │   ├── ReminderListService.swift     # Reminder list management
+│       │   ├── TaskCreationService.swift     # Task creation handling
+│       │   └── AppleScriptService.swift      # AppleScript integration
+│       ├── Views/             # SwiftUI views
+│       │   ├── TaskPicker/    # Main task creation interface
+│       │   ├── ListPicker/    # List selection interface
+│       │   ├── ReminderList/  # Reminder list display
+│       │   └── TextInput/     # Custom text input components
+│       ├── ViewModels/        # View models for data handling
+│       ├── Managers/          # Business logic managers
+│       └── Resources/         # App resources
 ```
 
-## Features
+## Architecture
 
-- View and manage reminders from macOS Reminders app
-- Split view interface with lists and reminders
-- Native macOS window and menu integration
-- Real-time updates when reminders change
-- Support for reminder completion status
+- **MVVM Architecture**: Uses SwiftUI with MVVM pattern for clear separation of concerns
+- **Service Layer**: Modular services for core functionality
+- **Cache Layer**: Efficient caching system for better performance
+- **Event-Driven**: Reactive updates using Combine framework
+- **Native Integration**: Direct integration with Apple's EventKit
 
-## Permissions
+## Dependencies
 
-The app requires access to your Reminders. When you first launch the app, it will request permission to access your reminders. You can manage this permission in System Settings:
-
-1. Open System Settings
-2. Navigate to Privacy & Security → Reminders
-3. Enable access for Simple Reminders
+- [HotKey](https://github.com/soffes/HotKey) - Global keyboard shortcut handling
 
 ## Development
 
-### Building from Source
-
-1. Make sure you have Xcode Command Line Tools installed:
 ```bash
-xcode-select --install
-```
-
-2. Open the project:
-```bash
-open Package.swift  # Opens in Xcode
-```
-
-Or build from command line:
-```bash
+# Build the project
 swift build
-```
 
-### Running in Development
-
-```bash
+# Run the app in development
 swift run
+
+# Build release version
+swift build -c release
 ```
 
-## Troubleshooting
+## Privacy
 
-1. If the app doesn't appear:
-   - Make sure you've granted Reminders access
-   - Check Console.app for any error messages
-   - Try rebuilding with `swift build --clean`
+SimpleReminders only accesses your local Reminders data through Apple's EventKit framework. No data is sent to external servers.
 
-2. If reminders don't load:
-   - Verify Reminders access in System Settings
-   - Restart the app
-   - Make sure you have at least one Reminders list
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-[Your chosen license]
+This project is licensed under the MIT License - see the LICENSE file for details
