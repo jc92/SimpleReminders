@@ -2,7 +2,7 @@
 
 # Set variables
 APP_NAME="SimpleReminders"
-VERSION="0.1.7-beta"
+VERSION="0.1.8-beta"
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 
 # Build for production
