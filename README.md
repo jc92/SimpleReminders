@@ -39,6 +39,22 @@ When you first launch the app, it will request permission to access your reminde
 3. Run `swift build -c release`
 4. The binary will be in `.build/release/SimpleReminders`
 
+## Bypassing Gatekeeper Warning
+
+If you encounter a warning stating that "Apple could not verify 'SimpleReminders' is free of malware," you can bypass this warning by following these steps:
+
+1. **Right-click on the app**:
+   - Locate the "SimpleReminders" app in your Finder.
+
+2. **Select "Open"**:
+   - Right-click (or Control-click) on the app and select "Open" from the context menu.
+
+3. **Confirm the prompt**:
+   - A prompt will appear asking if you want to open the app. Click "Open" to run it.
+
+### Note
+This method is safe for testing purposes if you trust the source of the app. For production use, consider signing and notarizing your app to avoid these warnings.
+
 ## Project Structure
 
 ```

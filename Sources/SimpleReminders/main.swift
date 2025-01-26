@@ -1,3 +1,5 @@
+// Set the deployment target to macOS 14
+import SwiftUI
 import AppKit
 
 autoreleasepool {

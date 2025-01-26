@@ -16,12 +16,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         contentView = ContentView()
         
         // Request Reminders access immediately
-        Task {
-            await RemindersManager.shared.requestAccess()
+        if #available(macOS 10.15, *) {
+            Task {
+                await RemindersManager.shared.requestAccess()
+            }
+        } else {
+            // Handle the case for older macOS versions
+            // You might want to set a default view or show an alert
         }
         
         // Create the status item
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        if #available(macOS 11.0, *) {
+            statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        } else {
+            statusItem = NSStatusBar.system.statusItem(withLength: 24)
+        }
         if let button = statusItem.button {
             if #available(macOS 11.0, *) {
                 if let image = NSImage(systemSymbolName: "checklist", accessibilityDescription: "Reminders") {
@@ -42,11 +51,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Create popover
         popover = NSPopover()
-        popover.contentSize = NSSize(width: 400, height: 500)
-        popover.behavior = .transient  // Changed to transient for better behavior
-        popover.contentViewController = NSHostingController(
-            rootView: contentView.environmentObject(RemindersManager.shared)
-        )
+        if #available(macOS 11.0, *) {
+            popover.contentSize = NSSize(width: 400, height: 500)
+            popover.behavior = .transient  // Changed to transient for better behavior
+        } else {
+            popover.contentSize = NSSize(width: 400, height: 500)
+            popover.behavior = .applicationDefined
+        }
+        if #available(macOS 11.0, *) {
+            popover.contentViewController = NSHostingController(
+                rootView: contentView.environmentObject(RemindersManager.shared)
+            )
+        } else {
+            // Handle the case for older macOS versions
+            // You might want to set a default view or show an alert
+        }
         
         // Create menu
         let mainMenu = NSMenu()
@@ -65,51 +84,66 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         appMenu.addItem(withTitle: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         
         // Setup global shortcut (Command + Shift + R)
-        hotKey = HotKey(key: .r, modifiers: [.command, .shift])
-        hotKey?.keyDownHandler = { [weak self] in
-            NSApp.activate(ignoringOtherApps: true)
-            TaskPickerPanel.shared.makeKeyAndOrderFront(nil)
-            TaskPickerPanel.shared.center()
+        if #available(macOS 10.12, *) {
+            hotKey = HotKey(key: .r, modifiers: [.command, .shift])
+            hotKey?.keyDownHandler = { [weak self] in
+                NSApp.activate(ignoringOtherApps: true)
+                TaskPickerPanel.shared.makeKeyAndOrderFront(nil)
+                TaskPickerPanel.shared.center()
+            }
+        } else {
+            // Handle the case for older macOS versions
+            // You might want to set a default view or show an alert
         }
         
         // Monitor clicks outside the popover
-        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
-            guard let self = self else { return }
-            
-            if self.popover.isShown {
-                if let button = self.statusItem.button,
-                   !button.frame.contains(button.convert(event.locationInWindow, from: nil)) {
-                    self.closePopover()
+        if #available(macOS 10.12, *) {
+            eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+                guard let self = self else { return }
+                
+                if self.popover.isShown {
+                    if let button = self.statusItem.button,
+                       !button.frame.contains(button.convert(event.locationInWindow, from: nil)) {
+                        self.closePopover()
+                    }
                 }
             }
+        } else {
+            // Handle the case for older macOS versions
+            // You might want to set a default view or show an alert
         }
         
         // Monitor keyboard events
-        keyboardMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self = self else { return event }
-            
-            if self.popover.isShown {
-                switch event.keyCode {
-                case 125: // Down Arrow
-                    DispatchQueue.main.async {
-                        self.contentView.navigateList(direction: 1)
+        if #available(macOS 10.12, *) {
+            keyboardMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self = self else { return event }
+                
+                if self.popover.isShown {
+                    switch event.keyCode {
+                    case 125: // Down Arrow
+                        DispatchQueue.main.async {
+                            self.contentView.navigateList(direction: 1)
+                        }
+                        return nil
+                    case 126: // Up Arrow
+                        DispatchQueue.main.async {
+                            self.contentView.navigateList(direction: -1)
+                        }
+                        return nil
+                    case 36: // Return
+                        DispatchQueue.main.async {
+                            self.contentView.selectFocusedList()
+                        }
+                        return nil
+                    default:
+                        return event
                     }
-                    return nil
-                case 126: // Up Arrow
-                    DispatchQueue.main.async {
-                        self.contentView.navigateList(direction: -1)
-                    }
-                    return nil
-                case 36: // Return
-                    DispatchQueue.main.async {
-                        self.contentView.selectFocusedList()
-                    }
-                    return nil
-                default:
-                    return event
                 }
+                return event
             }
-            return event
+        } else {
+            // Handle the case for older macOS versions
+            // You might want to set a default view or show an alert
         }
     }
     
