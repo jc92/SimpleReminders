@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "SimpleReminders",
     platforms: [
-        .macOS(.v13)
+        .macOS(.v12)  // Updated to macOS 12 for onSubmit and isSearchFocused support
     ],
     products: [
         .executable(name: "SimpleReminders", targets: ["SimpleReminders"]),

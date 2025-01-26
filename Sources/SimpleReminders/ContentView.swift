@@ -40,6 +40,7 @@ class ListFocusState: ObservableObject {
     private init() {}
 }
 
+@available(macOS 11.0, *)
 struct ContentView: View {
     @StateObject private var remindersManager = RemindersManager.shared
     @ObservedObject private var focusState = ListFocusState.shared
