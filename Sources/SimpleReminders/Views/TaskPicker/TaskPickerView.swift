@@ -1,7 +1,7 @@
 import SwiftUI
 import EventKit
+import AppKit
 
-@available(macOS 12.0, *)  // Using macOS 12 for onSubmit and isSearchFocused
 struct TaskPickerView: View {
     @ObservedObject var viewModel: TaskPickerViewModel
     @Environment(\.dismiss) private var dismiss
